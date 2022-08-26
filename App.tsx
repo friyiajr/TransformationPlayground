@@ -15,7 +15,7 @@ import {
 } from '@shopify/react-native-skia';
 import {processTransform3d, toMatrix3} from 'react-native-redash';
 
-const NUM_OF_CONFETTI = 20;
+const NUM_OF_CONFETTI = 30;
 
 const {height, width} = Dimensions.get('window');
 
@@ -31,46 +31,21 @@ interface Offset {
 const ConfettiPiece = ({startingXOffset, startingYOffset}: Offset) => {
   const WIDTH = 10;
   const HEIGHT = 30;
-  const seed = Math.random() * 4;
 
-  const centerY = useValue(0);
   const yPosition = useValue(startingYOffset);
-
-  const origin = useComputedValue(() => {
-    centerY.current = yPosition.current + HEIGHT / 2;
-    const centerX = startingXOffset + WIDTH / 2;
-    return vec(centerX, centerY.current);
-  }, [yPosition]);
 
   runTiming(yPosition, height + 200, {
     duration: 3000,
   });
 
-  const matrix = useComputedValue(() => {
-    const rotateZ = relativeSin(yPosition.current) * seed;
-    const rotateY = relativeSin(yPosition.current) * seed;
-    const rotateX = relativeSin(yPosition.current) * seed;
-    const mat3 = toMatrix3(
-      processTransform3d([
-        {rotateY: rotateY},
-        {rotateX: rotateX},
-        {rotateZ: rotateZ},
-      ]),
-    );
-
-    return Skia.Matrix(mat3);
-  }, [yPosition]);
-
   return (
-    <Group matrix={matrix} origin={origin}>
-      <RoundedRect
-        r={8}
-        x={startingXOffset}
-        y={yPosition}
-        height={WIDTH}
-        width={HEIGHT}
-      />
-    </Group>
+    <RoundedRect
+      r={8}
+      x={startingXOffset}
+      y={yPosition}
+      height={WIDTH}
+      width={HEIGHT}
+    />
   );
 };
 
