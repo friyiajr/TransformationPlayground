@@ -1,21 +1,23 @@
-import React, {useState} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import {Dimensions, Pressable, StyleSheet, Text, View} from 'react-native';
 
 import uuid from 'react-native-uuid';
 
 import {
   Canvas,
-  Group,
-  RoundedRect,
+  Drawing,
+  mix,
   runTiming,
   Skia,
-  useComputedValue,
+  SkiaValue,
+  SkPaint,
   useValue,
   vec,
 } from '@shopify/react-native-skia';
 import {processTransform3d, toMatrix3} from 'react-native-redash';
+import {DrawingContext} from '@shopify/react-native-skia/lib/typescript/src/renderer/DrawingContext';
 
-const NUM_OF_CONFETTI = 20;
+const NUM_OF_CONFETTI = 200;
 
 const {height, width} = Dimensions.get('window');
 
@@ -26,56 +28,68 @@ interface Offset {
   offsetId: string;
   startingXOffset: number;
   startingYOffset: number;
+  animationValue: SkiaValue;
+  paint: SkPaint;
 }
 
-const ConfettiPiece = ({startingXOffset, startingYOffset}: Offset) => {
+const ConfettiPiece = ({
+  animationValue,
+  startingXOffset,
+  startingYOffset,
+  paint,
+}: Offset) => {
   const WIDTH = 10;
   const HEIGHT = 30;
   const seed = Math.random() * 4;
 
-  const centerY = useValue(0);
-  const yPosition = useValue(startingYOffset);
+  const onDraw = useCallback(
+    ({canvas}: DrawingContext) => {
+      // Y position
+      const yPosition = mix(
+        animationValue.current,
+        startingYOffset,
+        height + 200,
+      );
+      // Origin:
+      const centerY = yPosition + HEIGHT / 2;
+      const centerX = startingXOffset + WIDTH / 2;
+      const origin = vec(centerX, centerY);
+      // Matrix:
+      const rotateZ = relativeSin(yPosition) * seed;
+      const rotateY = relativeSin(yPosition) * seed;
+      const rotateX = relativeSin(yPosition) * seed;
+      const mat3 = toMatrix3(
+        processTransform3d([
+          {rotateY: rotateY},
+          {rotateX: rotateX},
+          {rotateZ: rotateZ},
+        ]),
+      );
 
-  const origin = useComputedValue(() => {
-    centerY.current = yPosition.current + HEIGHT / 2;
-    const centerX = startingXOffset + WIDTH / 2;
-    return vec(centerX, centerY.current);
-  }, [yPosition]);
-
-  runTiming(yPosition, height + 200, {
-    duration: 3000,
-  });
-
-  const matrix = useComputedValue(() => {
-    const rotateZ = relativeSin(yPosition.current) * seed;
-    const rotateY = relativeSin(yPosition.current) * seed;
-    const rotateX = relativeSin(yPosition.current) * seed;
-    const mat3 = toMatrix3(
-      processTransform3d([
-        {rotateY: rotateY},
-        {rotateX: rotateX},
-        {rotateZ: rotateZ},
-      ]),
-    );
-
-    return Skia.Matrix(mat3);
-  }, [yPosition]);
-
-  return (
-    <Group matrix={matrix} origin={origin}>
-      <RoundedRect
-        r={8}
-        x={startingXOffset}
-        y={yPosition}
-        height={WIDTH}
-        width={HEIGHT}
-      />
-    </Group>
+      canvas.save();
+      canvas.translate(origin.x, origin.y);
+      canvas.concat(Skia.Matrix(mat3));
+      canvas.translate(-origin.x, -origin.y);
+      canvas.drawRRect(
+        Skia.RRectXY(
+          Skia.XYWHRect(startingXOffset, yPosition, WIDTH, HEIGHT),
+          8,
+          8,
+        ),
+        paint,
+      );
+      canvas.restore();
+    },
+    [animationValue, paint, seed, startingXOffset, startingYOffset],
   );
+
+  return <Drawing drawing={onDraw} />;
 };
 
 const App = () => {
   const [confettiPieces, setConfettiPieces] = useState<Offset[]>([]);
+  const animationValue = useValue(0);
+  const paint = useMemo(() => Skia.Paint(), []);
 
   const startAnimation = () => {
     const pieces: Offset[] = [];
@@ -84,15 +98,24 @@ const App = () => {
       const startingXOffset = Math.round(Math.random() * width);
       const startingYOffset = -Math.round(Math.random() * height);
       const id = uuid.v4() + '';
-      pieces.push({offsetId: id, startingXOffset, startingYOffset});
+      pieces.push({
+        offsetId: id,
+        startingXOffset,
+        startingYOffset,
+        animationValue,
+        paint,
+      });
     }
 
     setConfettiPieces(pieces);
+
+    animationValue.current = 0;
+    runTiming(animationValue, 1, {duration: 3000});
   };
 
   return (
     <View style={styles.container}>
-      <Canvas style={styles.container}>
+      <Canvas style={styles.container} debug mode="continuous">
         {confettiPieces.map((offset: Offset) => {
           return <ConfettiPiece key={offset.offsetId} {...offset} />;
         })}
