@@ -15,20 +15,31 @@ import {
 } from '@shopify/react-native-skia';
 import {processTransform3d, toMatrix3} from 'react-native-redash';
 
-const NUM_OF_CONFETTI = 20;
+const colors = ['#deb7ff', '#c785ec', '#a86add', '#8549a7', '#634087'];
+
+const NUM_OF_CONFETTI = 50;
 
 const {height, width} = Dimensions.get('window');
 
-const relativeSin = (yPosition: number) =>
-  Math.sin((yPosition - 300) * (Math.PI / 360));
+const relativeSin = (yPosition: number, offsetId: number) => {
+  const rand = Math.sin((yPosition - 500) * (Math.PI / 720));
+  const otherrand = Math.cos((yPosition - 500) * (Math.PI / 720));
+  return offsetId % 2 === 0 ? rand : -otherrand;
+};
 
 interface Offset {
   offsetId: string;
   startingXOffset: number;
   startingYOffset: number;
+  colorCode: number;
 }
 
-const ConfettiPiece = ({startingXOffset, startingYOffset}: Offset) => {
+const ConfettiPiece = ({
+  startingXOffset,
+  startingYOffset,
+  offsetId,
+  colorCode,
+}: Offset) => {
   const WIDTH = 10;
   const HEIGHT = 30;
   const seed = Math.random() * 4;
@@ -42,14 +53,17 @@ const ConfettiPiece = ({startingXOffset, startingYOffset}: Offset) => {
     return vec(centerX, centerY.current);
   }, [yPosition]);
 
-  runTiming(yPosition, height + 200, {
-    duration: 3000,
+  runTiming(yPosition, height * 3, {
+    duration: 5000,
   });
 
   const matrix = useComputedValue(() => {
-    const rotateZ = relativeSin(yPosition.current) * seed;
-    const rotateY = relativeSin(yPosition.current) * seed;
-    const rotateX = relativeSin(yPosition.current) * seed;
+    const rotateZ =
+      relativeSin(yPosition.current, Math.round(Number(offsetId))) * seed * 2.5;
+    const rotateY =
+      relativeSin(yPosition.current, Math.round(Number(offsetId))) * seed * 1.5;
+    const rotateX =
+      relativeSin(yPosition.current, Math.round(Number(offsetId))) * seed * 1.5;
     const mat3 = toMatrix3(
       processTransform3d([
         {rotateY: rotateY},
@@ -69,6 +83,7 @@ const ConfettiPiece = ({startingXOffset, startingYOffset}: Offset) => {
         y={yPosition}
         height={WIDTH}
         width={HEIGHT}
+        color={colors[colorCode]}
       />
     </Group>
   );
@@ -81,10 +96,15 @@ const App = () => {
     const pieces: Offset[] = [];
 
     for (let i = 0; i < NUM_OF_CONFETTI; i++) {
-      const startingXOffset = Math.round(Math.random() * width);
-      const startingYOffset = -Math.round(Math.random() * height);
-      const id = uuid.v4() + '';
-      pieces.push({offsetId: id, startingXOffset, startingYOffset});
+      const startingXOffset = Math.random() * width;
+      const startingYOffset = -Math.random() * height;
+      const id = i + Math.random() + '';
+      pieces.push({
+        offsetId: id,
+        startingXOffset,
+        startingYOffset,
+        colorCode: i % colors.length,
+      });
     }
 
     setConfettiPieces(pieces);
@@ -97,8 +117,9 @@ const App = () => {
           return <ConfettiPiece key={offset.offsetId} {...offset} />;
         })}
       </Canvas>
+      <Text style={styles.title}>Congradulations!</Text>
       <Pressable onPress={startAnimation} style={styles.button}>
-        <Text style={styles.buttonText}>ANIMATE!</Text>
+        <Text style={styles.buttonText}>START</Text>
       </Pressable>
     </View>
   );
@@ -108,11 +129,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  title: {
+    position: 'absolute',
+    top: '45%',
+    textAlign: 'center',
+    width: '100%',
+    fontSize: 40,
+    color: 'black',
+    fontWeight: 'bold',
+  },
   button: {
-    height: 100,
+    height: 60,
     backgroundColor: 'purple',
+    position: 'absolute',
+    left: 30,
+    right: 30,
+    bottom: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 10,
   },
   buttonText: {
     color: 'white',
