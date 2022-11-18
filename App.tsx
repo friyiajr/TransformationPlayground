@@ -1,8 +1,6 @@
 import React, {useState} from 'react';
 import {Dimensions, Pressable, StyleSheet, Text, View} from 'react-native';
 
-import uuid from 'react-native-uuid';
-
 import {
   Canvas,
   Group,
@@ -17,13 +15,13 @@ import {processTransform3d, toMatrix3} from 'react-native-redash';
 
 const colors = ['#deb7ff', '#c785ec', '#a86add', '#8549a7', '#634087'];
 
-const NUM_OF_CONFETTI = 50;
+const NUM_OF_CONFETTI = 70;
 
 const {height, width} = Dimensions.get('window');
 
 const relativeSin = (yPosition: number, offsetId: number) => {
-  const rand = Math.sin((yPosition - 500) * (Math.PI / 720));
-  const otherrand = Math.cos((yPosition - 500) * (Math.PI / 720));
+  const rand = Math.sin((yPosition - 500) * (Math.PI / 540));
+  const otherrand = Math.cos((yPosition - 500) * (Math.PI / 540));
   return offsetId % 2 === 0 ? rand : -otherrand;
 };
 
@@ -54,7 +52,7 @@ const ConfettiPiece = ({
   }, [yPosition]);
 
   runTiming(yPosition, height * 3, {
-    duration: 5000,
+    duration: 3500,
   });
 
   const matrix = useComputedValue(() => {
@@ -97,7 +95,7 @@ const App = () => {
 
     for (let i = 0; i < NUM_OF_CONFETTI; i++) {
       const startingXOffset = Math.random() * width;
-      const startingYOffset = -Math.random() * height;
+      const startingYOffset = -Math.random() * (height * 3);
       const id = i + Math.random() + '';
       pieces.push({
         offsetId: id,
@@ -113,11 +111,11 @@ const App = () => {
   return (
     <View style={styles.container}>
       <Canvas style={styles.container}>
-        {confettiPieces.map((offset: Offset) => {
-          return <ConfettiPiece key={offset.offsetId} {...offset} />;
-        })}
+        {confettiPieces.map(offset => (
+          <ConfettiPiece key={offset.offsetId} {...offset} />
+        ))}
       </Canvas>
-      <Text style={styles.title}>Congradulations!</Text>
+      <Text style={styles.title}>Congratulations!</Text>
       <Pressable onPress={startAnimation} style={styles.button}>
         <Text style={styles.buttonText}>START</Text>
       </Pressable>
@@ -128,6 +126,7 @@ const App = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: 'white',
   },
   title: {
     position: 'absolute',
